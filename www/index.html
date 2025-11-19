@@ -16,59 +16,161 @@
     <script src="www/config.js"></script>
 
     <script>
-// Firebaseの初期化
-firebase.initializeApp(firebaseConfig);
+let postsRef;
+let postsListener = null;
+
+// メッセージ表示処理
+function showMessage(message, type = 'success') {
+    const messageArea = $('#messageArea');
+    messageArea.html(`
+        <div class="message ${type}">
+            ${message}
+        </div>
+    `);
+
+    // 3秒後にメッセージを消す
+    setTimeout(() => {
+        messageArea.empty();
+    }, 3000);
+}
+
+// 文字数カウントの更新
+function updateCharacterCount(inputId, counterId, maxLength) {
+    const input = $(`#${inputId}`);
+    const counter = $(`#${counterId}`);
+
+    input.on('input', () => {
+        const length = input.val().length;
+        counter.text(`${length}/${maxLength}`);
+
+        if (length > maxLength) {
+            counter.addClass('error');
+        } else {
+            counter.removeClass('error');
+        }
+    });
+}
+
+// 入力値のバリデーション
+function validateInput(author, content) {
+    if (!author.trim()) {
+        showMessage('お名前を入力してください', 'error');
+        return false;
+    }
+    if (author.length > 20) {
+        showMessage('お名前は20文字以内で入力してください', 'error');
+        return false;
+    }
+    if (!content.trim()) {
+        showMessage('投稿内容を入力してください', 'error');
+        return false;
+    }
+    if (content.length > 1000) {
+        showMessage('投稿内容は1000文字以内で入力してください', 'error');
+        return false;
+    }
+    return true;
+}
+
+// 投稿処理
+function createPost(author, content) {
+    if (!validateInput(author, content)) return;
+
+    const button = $('#postButton');
+    button.prop('disabled', true);
+
+    const postData = {
+        author: author,
+        content: content,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    };
+
+    // この下の行を消して、投稿処理を記述
+    console.log('ボタンが押されました')
+    // この上の行を消して投稿処理を記述
+    // 行末に 「;」 を付けないこと
+    .then(() => {
+        showMessage('投稿が完了しました！');
+        $('#authorInput').val('');
+        $('#contentInput').val('');
+        updateCharacterCount('authorInput', 'authorCount', 20);
+        updateCharacterCount('contentInput', 'contentCount', 1000);
+    })
+    .catch((error) => {
+        showMessage('投稿に失敗しました：' + error.message, 'error');
+    })
+    .finally(() => {
+        button.prop('disabled', false);
+    });
+}
+
+// HTMLエスケープ処理
+function escapeHtml(str) {
+    if (!str) return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// タイムスタンプのフォーマット
+function formatTimestamp(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// 投稿のHTML要素を生成
+function createPostElement(post) {
+    return `
+        <div class="post" id="post-${post.id}">
+            <div class="post-header">
+                <span class="post-author">${escapeHtml(post.author)}</span>
+                <span class="post-time">
+                    ${formatTimestamp(post.timestamp)}
+                </span>
+            </div>
+            <div class="post-content">${escapeHtml(post.content)}</div>
+        </div>
+    `;
+}
+
 
 $(function() {
-    // データベースの参照を取得
-    const postsRef = firebase.database().ref('posts');
-
-    // メッセージ表示処理
-    function showMessage(message, type = 'success') {
-        $('#messageArea').html("<div class=\"message " + type +"\">" + message + "</div>");
+    // Firebaseの初期化
+    try {
+        firebase.initializeApp(firebaseConfig);
+        console.log("Firebase initialized successfully");
+        postsRef = firebase.database().ref('posts');
+    } catch (error) {
+        console.error("Firebase initialization error:", error);
+        showMessage('Firebaseの初期化に失敗しました', 'error');
     }
 
-    // エラーメッセージ表示処理
-    function showError(message) {
-        showMessage(message, 'error');
-    }
+    // 文字数カウンターの初期化
+    updateCharacterCount('authorInput', 'authorCount', 20);
+    updateCharacterCount('contentInput', 'contentCount', 1000);
+
+     // イベントリスナーの設定
+    $('#authorInput, #contentInput').on('input', () => {
+        const id = $(this).attr('id');
+        const maxLength = id === 'authorInput' ? 20 : 1000;
+        updateCharacterCount(id, id + 'Count', maxLength);
+    });
 
     // 投稿処理
-    $('#postButton').on('click', function() {
+    $('#postButton').on('click', () => {
         // 投稿内容をフォームから取得
         const authorVal = $('#authorInput').val();
         const contentVal = $('#contentInput').val();
-
-        // 入力値の検証
-        if (!contentVal || !authorVal) {
-            showError('投稿内容と名前を入力してください');
-            return false;
-        }
-
-        // 投稿データの生成
-        const postData = {
-            author: authorVal,
-            content: contentVal,
-            timestamp: Date.now()
-        };
-
-        // データベースに投稿を追加
-
-        // この下の行を消して、投稿処理を記述
-        console.log('ボタンが押されました')
-        // この上の行を消して投稿処理を記述
-        // 行末に 「;」 を付けないこと
-
-            .then(function() {
-                showMessage('投稿が完了しました！');
-                // 投稿フォームを初期化
-                $('#authorInput').val('');
-                $('#contentInput').val('');
-            })
-            .catch(function(error) {
-                console.error('Post error:', error);
-                showError('投稿に失敗しました：' + error.message);
-            });
+        createPost(authorVal, contentVal);
     });
 });
 
@@ -77,20 +179,26 @@ $(function() {
 <body>
     <div class="container">
         <h1>掲示板アプリ</h1>
-        
+
         <!-- メッセージ表示エリア -->
         <div id="messageArea"></div>
 
         <!-- 投稿フォーム -->
         <div class="post-form">
             <div class="form-group">
-                <input type="text" id="authorInput" placeholder="名前">
+                <label for="authorInput">お名前</label>
+                <input type="text" id="authorInput"
+                       class="form-control" placeholder="お名前を入力してください">
+                <small class="character-count" id="authorCount">0/20</small>
             </div>
             <div class="form-group">
-                <textarea id="contentInput" placeholder="投稿内容"></textarea>
+                <label for="contentInput">投稿内容</label>
+                <textarea id="contentInput" class="form-control"
+                          placeholder="投稿内容を入力してください"></textarea>
+                <small class="character-count" id="contentCount">0/1000</small>
             </div>
-            <div class="form-group">
-                <button id="postButton">投稿する</button>
+            <div class="button-group">
+                <button id="postButton" class="btn-primary">投稿する</button>
             </div>
         </div>
     </div>
