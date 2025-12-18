@@ -489,6 +489,22 @@ textarea.form-control {
     margin-top: 4px;
 }
 
+/* ニックネーム入力フィールド */
+.register-only .required {
+    color: #dc3545;
+    font-size: 11px;
+    font-weight: normal;
+}
+
+#registerNickname {
+    border-color: #28a745;
+}
+
+#registerNickname:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
 /* ユーザー情報 */
 .user-info {
     background: white;
@@ -643,4 +659,13 @@ textarea.form-control {
     background-color: #5c1e1e;
     color: #ef9a9a;
     border-color: #c62828;
+}
+
+.dark-theme #registerNickname {
+    border-color: #2e7d32;
+}
+
+.dark-theme #registerNickname:focus {
+    border-color: #4caf50;
+    box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25);
 }

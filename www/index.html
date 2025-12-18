@@ -93,7 +93,7 @@
         }
 
         // 認証フォームのバリデーション
-        function validateAuthInput(email, password, isRegister = false) {
+        function validateAuthInput(email, password, isRegister = false, nickname = '') {
             if (!email || !email.trim()) {
                 showMessage('メールアドレスを入力してください', 'error');
                 return false;
@@ -104,6 +104,14 @@
             }
             if (isRegister && password.length < 6) {
                 showMessage('パスワードは6文字以上にしてください', 'error');
+                return false;
+            }
+            if (isRegister && (!nickname || !nickname.trim())) {
+                showMessage('ニックネームを入力してください', 'error');
+                return false;
+            }
+            if (isRegister && nickname.length > 20) {
+                showMessage('ニックネームは20文字以内で入力してください', 'error');
                 return false;
             }
             return true;
@@ -121,9 +129,11 @@
             const button = $('#postButton');
             button.prop('disabled', true);
 
-            // author はログインしているユーザのメールアドレスに変更、userId を追加
+            // author はログインしているユーザのdisplayNameを使用、userId を追加
+            const displayName = currentUser.displayName || currentUser.email;
             const postData = {
-                author: currentUser.email,
+                author: displayName,
+                authorEmail: currentUser.email,
                 content: content,
                 timestamp: firebase.database.ServerValue.TIMESTAMP,
                 userId: currentUser.uid
@@ -428,13 +438,19 @@
         }
 
         // 新規登録処理
-        function register(email, password) {
-            if (!validateAuthInput(email, password, true)) return;
+        function register(email, password, nickname) {
+            if (!validateAuthInput(email, password, true, nickname)) return;
 
             const button = $('#registerButton');
             button.prop('disabled', true);
 
             firebase.auth().createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    // displayNameを設定
+                    return userCredential.user.updateProfile({
+                        displayName: nickname.trim()
+                    });
+                })
                 .then(() => {
                     showMessage('アカウントを作成しました');
                     clearAuthForm();
@@ -462,6 +478,7 @@
         function clearAuthForm() {
             $('#loginEmail').val('');
             $('#loginPassword').val('');
+            $('#registerNickname').val('');
         }
 
         // UI更新
@@ -469,11 +486,13 @@
             if (user) {
                 $('.logged-in').show();
                 $('.logged-out').hide();
-                $('#userEmail').text(user.email);
+                // displayNameがあればそれを表示、なければメールアドレス
+                const displayName = user.displayName || user.email;
+                $('#userDisplayName').text(displayName);
             } else {
                 $('.logged-in').hide();
                 $('.logged-out').show();
-                $('#userEmail').text('');
+                $('#userDisplayName').text('');
             }
         }
 
@@ -519,7 +538,8 @@
             $('#registerButton').on('click', () => {
                 const email = $('#loginEmail').val();
                 const password = $('#loginPassword').val();
-                register(email, password);
+                const nickname = $('#registerNickname').val();
+                register(email, password, nickname);
             });
 
             $('#logoutButton').on('click', logout);
@@ -603,6 +623,10 @@
                 <input type="password" id="loginPassword" class="form-control" placeholder="6文字以上">
                 <small class="help-text">※新規登録時は6文字以上</small>
             </div>
+            <div class="form-group register-only" id="nicknameGroup">
+                <label for="registerNickname">ニックネーム <span class="required">※新規登録時のみ</span></label>
+                <input type="text" id="registerNickname" class="form-control" placeholder="表示名（20文字以内）" maxlength="20">
+            </div>
             <div class="button-group">
                 <button id="loginButton" class="btn-primary">ログイン</button>
                 <button id="registerButton" class="btn-secondary">新規登録</button>
@@ -611,7 +635,7 @@
 
         <!-- ログイン情報（ログイン時表示） -->
         <div class="user-info logged-in">
-            <span>ログイン中：<span id="userEmail"></span></span>
+            <span>ログイン中：<span id="userDisplayName"></span></span>
             <button id="logoutButton" class="btn-secondary">ログアウト</button>
         </div>
 
