@@ -478,6 +478,43 @@
                 });
         }
 
+        // 表示名の更新処理
+        function updateDisplayName(newName) {
+            if (!currentUser) {
+                showMessage('ログインが必要です', 'error');
+                return;
+            }
+
+            if (!newName || !newName.trim()) {
+                showMessage('新しいニックネームを入力してください', 'error');
+                return;
+            }
+
+            if (newName.length > 20) {
+                showMessage('ニックネームは20文字以内で入力してください', 'error');
+                return;
+            }
+
+            currentUser.updateProfile({
+                displayName: newName.trim()
+            })
+                .then(() => {
+                    showMessage('表示名を更新しました');
+                    $('#userDisplayName').text(newName.trim());
+                    closeModal('nicknameEditModal');
+                })
+                .catch((error) => {
+                    showMessage('表示名の更新に失敗しました：' + error.message, 'error');
+                });
+        }
+
+        // 表示名編集モーダルを開く
+        function openNicknameEditModal() {
+            const currentName = currentUser ? (currentUser.displayName || '') : '';
+            $('#newNicknameInput').val(currentName);
+            showModal('nicknameEditModal');
+        }
+
         // 認証フォームのクリア
         function clearAuthForm() {
             $('#loginEmail').val('');
@@ -637,7 +674,11 @@
 
         <!-- ログイン情報（ログイン時表示） -->
         <div class="user-info logged-in">
-            <span>ログイン中：<span id="userDisplayName"></span></span>
+            <div class="user-info-left">
+                <span>ログイン中：<span id="userDisplayName"></span></span>
+                <button id="editNicknameBtn" class="btn-edit-nickname" onclick="openNicknameEditModal()"
+                    title="表示名を編集">✏️</button>
+            </div>
             <button id="logoutButton" class="btn-secondary">ログアウト</button>
         </div>
 
@@ -706,6 +747,27 @@
             <div class="modal-footer">
                 <button onclick="handleDelete()" class="btn-danger">削除</button>
                 <button onclick="closeModal('deleteModal')" class="btn-cancel">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 表示名編集モーダル -->
+    <div id="nicknameEditModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>表示名の変更</h3>
+                <button class="modal-close" onclick="closeModal('nicknameEditModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="newNicknameInput">新しいニックネーム</label>
+                    <input type="text" id="newNicknameInput" class="form-control" placeholder="20文字以内" maxlength="20">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="updateDisplayName($('#newNicknameInput').val())" class="btn-primary">更新</button>
+                <button onclick="closeModal('nicknameEditModal')" class="btn-cancel">キャンセル</button>
             </div>
         </div>
     </div>
